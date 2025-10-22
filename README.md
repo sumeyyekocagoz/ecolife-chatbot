@@ -1,66 +1,26 @@
-# ecolife-chatbot
-EcoLife: A RAG-based chatbot on veganism &amp; ecological living with a 5500-entry knowledge base. An Akbank Generative-AI Bootcamp project.
-# EcoLife Chatbot 🌱
-
-# EcoLife Chatbot 🌱
-
-## About This Project
-
-EcoLife is a chatbot based on the **RAG (Retrieval-Augmented Generation)** architecture, developed as a final project for the **Akbank Generative-AI Bootcamp**. This project aims to provide accurate and context-aware answers to user queries on **veganism and ecological living**, utilizing a specialized knowledge base of over 5500 entries.
-
-## 🚀 Project Goals
-
-* **Provide Accurate Information:** To serve as a reliable and quick source of information on complex topics like veganism and sustainable lifestyles.
-* **Implement RAG Architecture:** To enhance the factual accuracy of a generative AI model by leveraging a large, external knowledge base.
-* **Showcase Bootcamp Skills:** To demonstrate the practical application of the skills and knowledge acquired during the Akbank Generative-AI Bootcamp.
-
-## 🛠️ Key Features
-
-* **Architecture:** Retrieval-Augmented Generation (RAG)
-* **Domain:** Veganism & Ecological Living
-* **Knowledge Base:** A custom-built dataset with 5500+ entries.
-* **Context:** Developed for the Akbank Generative-AI Bootcamp.
-
-## 💻 Tech Stack
-
-* **Language:** Python
-* **LLM:** Google Gemini API 
-* **Vector Database:** FAISS
-* **Embeddings:** Sentence-Transformers
-
-## 🚀 Getting Started
-
+EcoLife Chatbot 🌱
+🔴 CANLI DEMO (LIVE DEMO) 🔴
+Chatbot'u canlı olarak denemek için aşağıdaki linke tıklayın:
+About This Project
+EcoLife is a chatbot based on the RAG (Retrieval-Augmented Generation) architecture, developed as a final project for the Akbank Generative-AI Bootcamp.
+This project aims to provide accurate and context-aware answers to user queries on veganism and ecological living. It utilizes a specialized llama.jsonl dataset, which is converted into a FAISS vector index to find the most relevant context for user questions.
+🛠️ Key Features
+• Architecture: Retrieval-Augmented Generation (RAG)
+• Domain: Veganism & Ecological Living
+• Knowledge Base: llama.jsonl dataset
+• Vector Search: FAISS index for efficient similarity search.
+• Context: Akbank Generative-AI Bootcamp Project.
+💻 Tech Stack
+• Language: Python
+• LLM: Google Gemini API (gemini-1.5-flash)
+• Embeddings: Sentence-Transformers (all-MiniLM-L6-v2)
+• Vector Database: FAISS (faiss-cpu)
+• Frontend: Streamlit
+• Deployment: Streamlit Community Cloud
+🚀 Getting Started (Run Locally)
 Follow these instructions to get a copy of the project up and running on your local machine.
-
-### Prerequisites
-
-* Python 3.8 or higher
-* An API key for the generative model you are using (e.g., Google AI Studio).
-
-### Installation
-
-1.  **Clone the repository:**
-    ```sh
-    git clone [https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git](https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git)
-    ```
-2.  **Navigate to the project directory:**
-    ```sh
-    cd YOUR_REPOSITORY_NAME
-    ```
-3.  **Install the required packages:**
-    ```sh
-    pip install -r requirements.txt
-    ```
-4.  **Set up your environment variables:**
-    * Create a `.env` file in the root directory.
-    * Add your API key to the `.env` file:
-        ```
-        API_KEY="YOUR_API_KEY_HERE"
-        ```
-
-5.  **Run the application:**
-    ```sh
-    streamlit run app.py
-    ```
-
----
+Prerequisites
+• Python 3.8 or higher
+• A Google Gemini API Key
+• A Hugging Face User Access Token (for downloading the embedding model)
+Installation
