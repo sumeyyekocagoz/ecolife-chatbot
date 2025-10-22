@@ -8,13 +8,25 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 
-# .env dosyasındaki API anahtarını yükle
+# .env dosyasındaki API anahtarını yükle (Bu, lokal çalışma içindir. 
+# Streamlit Cloud'da secrets kullanılır)
 load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Hata kontrolü
+# --- API Anahtarlarını Yükleme ve Kontrol Etme ---
+
+# Google API anahtarını al (Önce Streamlit Secrets'tan dene, sonra lokal .env'den)
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+
+# Hugging Face token'ını al (Sadece Streamlit Secrets'tan)
+HF_TOKEN = st.secrets.get("HUGGING_FACE_HUB_TOKEN")
+
+# Anahtar kontrolleri
 if not GOOGLE_API_KEY:
-    st.error("GOOGLE_API_KEY bulunamadı. Lütfen .env dosyanızı kontrol edin.")
+    st.error("GOOGLE_API_KEY bulunamadı. Lütfen Streamlit Secrets'ı kontrol edin.")
+    st.stop()
+
+if not HF_TOKEN:
+    st.error("HUGGING_FACE_HUB_TOKEN bulunamadı. Lütfen Streamlit Secrets'ı kontrol edin.")
     st.stop()
 
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -41,24 +53,18 @@ def get_faiss_index(texts, model, index_path="faiss_index_v2"):
     """
     if os.path.exists(index_path):
         try:
-            # Varolan index'i yükle
             index = faiss.read_index(index_path)
             print("Varolan FAISS index'i yüklendi.")
             return index
         except Exception as e:
             print(f"Index yüklenirken hata: {e}. Index yeniden oluşturulacak.")
 
-    # Yeni index oluştur
     print("Yeni FAISS index'i oluşturuluyor...")
     try:
         embeddings = model.encode(texts, convert_to_tensor=False)
-        
-        # FAISS index'ini oluştur
         dimension = embeddings.shape[1]
-        index = faiss.IndexFlatL2(dimension)  # L2 (Euclidean) mesafesi
+        index = faiss.IndexFlatL2(dimension)
         index.add(np.array(embeddings).astype('float32'))
-        
-        # Index'i diske kaydet
         faiss.write_index(index, index_path)
         print("Yeni index oluşturuldu ve kaydedildi.")
         return index
@@ -73,22 +79,7 @@ def get_context_from_faiss(index, query, model, k=5):
     try:
         query_embedding = model.encode([query], convert_to_tensor=False)
         distances, indices = index.search(np.array(query_embedding).astype('float32'), k)
-        
-        # 'texts' listesine ihtiyacımız olacak. Bu listeyi global'de veya
-        # cache'lenmiş fonksiyondan almamız gerekiyor.
-        # Bu fonksiyonun çalışması için 'texts' listesine erişim varsayılıyor.
-        # Daha iyi bir yapı için 'texts' listesini de parametre olarak alabilir.
-        # Şimdilik, 'texts'in bu fonksiyonun çağrıldığı yerde mevcut olduğunu varsayıyoruz.
-        
-        # 'texts' listesi 'load_resources' fonksiyonunda tanımlı,
-        # bu yüzden bu fonksiyonu 'load_resources' içinde kullanmak
-        # veya 'texts'i de cache'lemek daha iyi olur.
-        # Ancak Colab'daki yapıya sadık kalmak için, 'texts' listesini
-        # ana uygulamada yüklüyoruz ve bu fonksiyonu orada çağırıyoruz.
-        
-        # Düzeltme: 'texts' listesini de döndürelim.
-        return indices[0] # Sadece index'leri döndür, metinleri ana fonksiyonda al
-    
+        return indices[0] 
     except Exception as e:
         st.error(f"FAISS araması sırasında hata: {e}")
         return []
@@ -100,7 +91,7 @@ def safe_text_extraction(row):
     try:
         return f"Soru: {row['Soru']} Cevap: {row['Cevap']}"
     except TypeError:
-        return "" # Hatalı veya eksik veri varsa boş döndür
+        return "" 
 
 # --- Veri Yükleme ve Önbelleğe Alma ---
 
@@ -108,13 +99,21 @@ def safe_text_extraction(row):
 def load_resources():
     """
     Ağır kaynakları (model, veri, index) yükler ve cache'ler.
-    Bu fonksiyon uygulama başlarken sadece bir kez çalışır.
     """
     st.info("Kaynaklar yükleniyor (Bu işlem birkaç dakika sürebilir)...")
     
     # 1. Gömme (Embedding) Modelini Yükle
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    
+    # DEĞİŞİKLİK BURADA: Token'ı manuel olarak modele iletiyoruz.
+    try:
+        embedding_model = SentenceTransformer(
+            'all-MiniLM-L6-v2',
+            token=HF_TOKEN  # Token'ı burada kullan
+        )
+    except Exception as e:
+        st.error(f"SentenceTransformer yüklenirken hata oluştu. Hata: {e}")
+        st.error("Lütfen Streamlit Secrets'daki HUGGING_FACE_HUB_TOKEN'ın doğru olduğundan emin olun.")
+        st.stop()
+        
     # 2. Veritabanını Yükle
     try:
         df = pd.read_excel('combined_data_v2.xlsx')
@@ -139,7 +138,6 @@ def load_resources():
         
     st.success("Kaynaklar başarıyla yüklendi! Chatbot hazır.")
     
-    # 'texts' listesini de döndürüyoruz ki RAG aramasında kullanabilelim
     return embedding_model, faiss_index, texts
 
 # --- Streamlit Uygulaması ---
@@ -155,7 +153,6 @@ except Exception as e:
     st.error(f"Kaynaklar yüklenirken kritik bir hata oluştu: {e}")
     st.stop()
 
-
 # Oturum durumunu (chat geçmişi) başlat
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -163,7 +160,6 @@ if "chat_history" not in st.session_state:
         "role": "assistant",
         "content": "Merhaba! Ben EcoLife. Veganlık ve ekolojik yaşam hakkında sorularınızı yanıtlamak için buradayım."
     })
-
 
 # Chat geçmişini ekrana yazdır
 for message in st.session_state.chat_history:
@@ -179,8 +175,6 @@ if prompt := st.chat_input("Veganlık veya ekolojik yaşam hakkında bir soru so
 
     # RAG: İlgili bağlamı FAISS'den al
     context_indices = get_context_from_faiss(faiss_index, prompt, embedding_model, k=5)
-    
-    # İndex'lere göre metinleri al
     context_texts = [texts[i] for i in context_indices]
     
     # Gemini için birleştirilmiş prompt hazırla
@@ -201,4 +195,5 @@ if prompt := st.chat_input("Veganlık veya ekolojik yaşam hakkında bir soru so
     with st.chat_message("assistant"):
         st.markdown(response_text)
     st.session_state.chat_history.append({"role": "assistant", "content": response_text})
+
 
