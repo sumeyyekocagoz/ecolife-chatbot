@@ -91,7 +91,7 @@ def safe_text_extraction(row):
 
 # --- Veri Yükleme ve Önbelleğe Alma ---
 
-@st.cache_resource
+@st.cache_resource():
 def load_resources():
     st.info("Kaynaklar yükleniyor (Bu işlem birkaç dakika sürebilir)...")
     
