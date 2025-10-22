@@ -34,8 +34,8 @@ genai.configure(api_key=GOOGLE_API_KEY)
 # --- Yardımcı Fonksiyonlar ---
 
 def get_gemini_response(question, chat_history):
-    # DÜZELTME: En modern 'gemini-1.5-flash' modelini kullanıyoruz.
-    # requirements.txt'deki sürüm güncellemesi bu modelin bulunmasını sağlayacak.
+    # 'gemini-1.5-flash' modelini kullanıyoruz. 
+    # requirements.txt'deki >=0.7.0 güncellemesi bunun bulunmasını sağlar.
     model = genai.GenerativeModel('gemini-1.5-flash') 
     
     chat = model.start_chat(history=chat_history) 
@@ -91,7 +91,7 @@ def safe_text_extraction(row):
 
 # --- Veri Yükleme ve Önbelleğe Alma ---
 
-@st.cache_resource()
+@st.cache_resource
 def load_resources():
     st.info("Kaynaklar yükleniyor (Bu işlem birkaç dakika sürebilir)...")
     
@@ -154,8 +154,11 @@ if "chat_history" not in st.session_state:
 # Chat geçmişini ekrana yazdır
 for message in st.session_state.chat_history:
     display_role = "assistant" if message["role"] == "model" else message["role"]
-    with st.cache_resource:
+    # ---------------- DÜZELTME BURADA -----------------
+    # 'st.cache_resource' yerine 'st.chat_message' kullanıldı.
+    with st.chat_message(display_role): 
         st.markdown(message["parts"][0]["text"])
+    # --------------------------------------------------
 
 # Kullanıcıdan yeni giriş al
 if prompt := st.chat_input("Veganlık veya ekolojik yaşam hakkında bir soru sorun..."):
