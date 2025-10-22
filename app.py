@@ -34,8 +34,9 @@ genai.configure(api_key=GOOGLE_API_KEY)
 # --- Yardımcı Fonksiyonlar ---
 
 def get_gemini_response(question, chat_history):
-    # DÜZELTME: Eski 'v1beta' API ile uyumlu, kararlı 'gemini-1.0-pro' model adı kullanıldı.
-    model = genai.GenerativeModel('gemini-1.0-pro') 
+    # DÜZELTME: En modern 'gemini-1.5-flash' modelini kullanıyoruz.
+    # requirements.txt'deki sürüm güncellemesi bu modelin bulunmasını sağlayacak.
+    model = genai.GenerativeModel('gemini-1.5-flash') 
     
     chat = model.start_chat(history=chat_history) 
     
@@ -153,7 +154,7 @@ if "chat_history" not in st.session_state:
 # Chat geçmişini ekrana yazdır
 for message in st.session_state.chat_history:
     display_role = "assistant" if message["role"] == "model" else message["role"]
-    with st.chat_message(display_role):
+    with st.cache_resource:
         st.markdown(message["parts"][0]["text"])
 
 # Kullanıcıdan yeni giriş al
