@@ -35,7 +35,8 @@ genai.configure(api_key=GOOGLE_API_KEY)
 
 def get_gemini_response(question, chat_history):
     model = genai.GenerativeModel('gemini-pro')
-    chat = model.start_chat(history=chat_history)
+    # HATA DÜZELTMESİ: 'chat_history' artık Gemini'nin beklediği doğru formatta.
+    chat = model.start_chat(history=chat_history) 
     
     try:
         response = chat.send_message(question, stream=False)
@@ -76,19 +77,10 @@ def get_context_from_faiss(index, query, model, k=5):
         return []
 
 def safe_text_extraction(row):
-    """
-    JSONL dosyasındaki her satırı 'Soru: ... Cevap: ...' formatına getirir.
-    EĞER DOSYANIZDAKİ ANAHTARLAR (KEY) 'Soru' VE 'Cevap' DEĞİLSE,
-    BURAYI DEĞİŞTİRMENİZ GEREKİR.
-    """
     try:
-        # ---- ÖNEMLİ VARSAYIM ----
         # JSONL dosyanızdaki anahtarların 'Soru' ve 'Cevap' olduğunu varsayıyorum.
-        # Eğer değilse (örn: 'prompt' ve 'response'), aşağıdaki satırı ona göre değiştirin.
         return f"Soru: {row['Soru']} Cevap: {row['Cevap']}"
     except KeyError:
-        # Eğer 'Soru' veya 'Cevap' anahtarları bulunamazsa
-        # Belki de veri 'text' adında tek bir anahtar içindedir?
         if 'text' in row:
             return row['text']
         return "" 
@@ -99,12 +91,8 @@ def safe_text_extraction(row):
 
 @st.cache_resource
 def load_resources():
-    """
-    Ağır kaynakları (model, veri, index) yükler ve cache'ler.
-    """
     st.info("Kaynaklar yükleniyor (Bu işlem birkaç dakika sürebilir)...")
     
-    # 1. Gömme (Embedding) Modelini Yükle
     try:
         embedding_model = SentenceTransformer(
             'all-MiniLM-L6-v2',
@@ -114,28 +102,23 @@ def load_resources():
         st.error(f"SentenceTransformer yüklenirken hata oluştu. Hata: {e}")
         st.stop()
         
-    # 2. Veritabanını Yükle
-    # DEĞİŞİKLİK BURADA: pd.read_json kullanılıyor
     DATA_FILE = 'llama.jsonl'
     try:
         df = pd.read_json(DATA_FILE, lines=True)
     except FileNotFoundError:
         st.error(f"HATA: '{DATA_FILE}' dosyası proje klasöründe bulunamadı.")
-        st.error("Lütfen bu dosyayı Hugging Face'den indirip GitHub deponuza yükleyin.")
         st.stop()
     except Exception as e:
         st.error(f"'{DATA_FILE}' dosyası okunurken hata: {e}")
         st.stop()
         
-    # 3. Metinleri Hazırla
     df['text'] = df.apply(safe_text_extraction, axis=1)
     texts = df['text'].dropna().tolist()
     
     if not texts:
-        st.error("Veritabanından metin okunamadı. 'safe_text_extraction' fonksiyonunu kontrol edin.")
+        st.error("Veritabanından metin okunamadı.")
         st.stop()
         
-    # 4. FAISS Index'ini Yükle veya Oluştur
     faiss_index = get_faiss_index(texts, embedding_model)
     
     if faiss_index is None:
@@ -152,7 +135,6 @@ st.set_page_config(page_title="EcoLife Chatbot", page_icon="🌱")
 st.title("🌱 EcoLife - Vegan & Ekolojik Yaşam Asistanı")
 st.caption("Akbank Generative-AI Bootcamp Projesi")
 
-# Kaynakları yükle (cache'den gelir)
 try:
     embedding_model, faiss_index, texts = load_resources()
 except Exception as e:
@@ -162,39 +144,43 @@ except Exception as e:
 # Oturum durumunu (chat geçmişi) başlat
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+    # DÜZELTME 1: Gemini formatına uygun başlatma
     st.session_state.chat_history.append({
-        "role": "assistant",
-        "content": "Merhaba! Ben EcoLife. Veganlık ve ekolojik yaşam hakkında sorularınızı yanıtlamak için buradayım."
+        "role": "model",  # 'assistant' -> 'model'
+        "parts": [{"text": "Merhaba! Ben EcoLife. Veganlık ve ekolojik yaşam hakkında sorularınızı yanıtlamak için buradayım."}] 
     })
 
 # Chat geçmişini ekrana yazdır
+# DÜZELTME 2: Gemini formatından okuma
 for message in st.session_state.chat_history:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    display_role = "assistant" if message["role"] == "model" else message["role"]
+    with st.chat_message(display_role):
+        st.markdown(message["parts"][0]["text"]) # 'content' -> 'parts'[0]['text']
 
 # Kullanıcıdan yeni giriş al
 if prompt := st.chat_input("Veganlık veya ekolojik yaşam hakkında bir soru sorun..."):
     
+    # DÜZELTME 3: Kullanıcı girişini Gemini formatında kaydetme
     st.chat_message("user").markdown(prompt)
-    st.session_state.chat_history.append({"role": "user", "content": prompt})
+    st.session_state.chat_history.append({"role": "user", "parts": [{"text": prompt}]})
 
     context_indices = get_context_from_faiss(faiss_index, prompt, embedding_model, k=5)
     context_texts = [texts[i] for i in context_indices]
     
     combined_prompt = f"""
     Kullanıcı Sorusu: {prompt}
-
     Bilgi Tabanından Alınan İlgili Bağlam (Lütfen cevabını bu bağlama dayandır):
     {"---".join(context_texts)}
-
     Lütfen YALNIZCA sağlanan bağlamı kullanarak kullanıcı sorusunu yanıtla. Eğer cevap bağlamda yoksa, 'Bu konuda bilgim bulunmuyor.' de.
     """
 
     with st.spinner("EcoLife düşünüyor..."):
+        # Gemini'ye gönderilen 'st.session_state.chat_history' artık doğru formatta
         response_text = get_gemini_response(combined_prompt, st.session_state.chat_history)
     
+    # DÜZELTME 4: Model yanıtını Gemini formatında kaydetme
     with st.chat_message("assistant"):
         st.markdown(response_text)
-    st.session_state.chat_history.append({"role": "assistant", "content": response_text})
+    st.session_state.chat_history.append({"role": "model", "parts": [{"text": response_text}]})
 
 
