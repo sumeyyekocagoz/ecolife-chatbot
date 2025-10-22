@@ -34,8 +34,9 @@ genai.configure(api_key=GOOGLE_API_KEY)
 # --- Yardımcı Fonksiyonlar ---
 
 def get_gemini_response(question, chat_history):
-    model = genai.GenerativeModel('gemini-pro')
-    # HATA DÜZELTMESİ: 'chat_history' artık Gemini'nin beklediği doğru formatta.
+    # DÜZELTME: Model adı 'gemini-pro'dan 'gemini-1.5-flash'e güncellendi.
+    model = genai.GenerativeModel('gemini-1.5-flash') 
+    
     chat = model.start_chat(history=chat_history) 
     
     try:
@@ -144,23 +145,20 @@ except Exception as e:
 # Oturum durumunu (chat geçmişi) başlat
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-    # DÜZELTME 1: Gemini formatına uygun başlatma
     st.session_state.chat_history.append({
-        "role": "model",  # 'assistant' -> 'model'
+        "role": "model", 
         "parts": [{"text": "Merhaba! Ben EcoLife. Veganlık ve ekolojik yaşam hakkında sorularınızı yanıtlamak için buradayım."}] 
     })
 
 # Chat geçmişini ekrana yazdır
-# DÜZELTME 2: Gemini formatından okuma
 for message in st.session_state.chat_history:
     display_role = "assistant" if message["role"] == "model" else message["role"]
     with st.chat_message(display_role):
-        st.markdown(message["parts"][0]["text"]) # 'content' -> 'parts'[0]['text']
+        st.markdown(message["parts"][0]["text"])
 
 # Kullanıcıdan yeni giriş al
 if prompt := st.chat_input("Veganlık veya ekolojik yaşam hakkında bir soru sorun..."):
     
-    # DÜZELTME 3: Kullanıcı girişini Gemini formatında kaydetme
     st.chat_message("user").markdown(prompt)
     st.session_state.chat_history.append({"role": "user", "parts": [{"text": prompt}]})
 
@@ -175,10 +173,8 @@ if prompt := st.chat_input("Veganlık veya ekolojik yaşam hakkında bir soru so
     """
 
     with st.spinner("EcoLife düşünüyor..."):
-        # Gemini'ye gönderilen 'st.session_state.chat_history' artık doğru formatta
         response_text = get_gemini_response(combined_prompt, st.session_state.chat_history)
     
-    # DÜZELTME 4: Model yanıtını Gemini formatında kaydetme
     with st.chat_message("assistant"):
         st.markdown(response_text)
     st.session_state.chat_history.append({"role": "model", "parts": [{"text": response_text}]})
