@@ -34,8 +34,8 @@ genai.configure(api_key=GOOGLE_API_KEY)
 # --- Yardımcı Fonksiyonlar ---
 
 def get_gemini_response(question, chat_history):
-    # DÜZELTME: Model adı 'gemini-pro'dan 'gemini-1.5-flash'e güncellendi.
-    model = genai.GenerativeModel('gemini-1.5-flash') 
+    # DÜZELTME: Eski 'v1beta' API ile uyumlu, kararlı 'gemini-1.0-pro' model adı kullanıldı.
+    model = genai.GenerativeModel('gemini-1.0-pro') 
     
     chat = model.start_chat(history=chat_history) 
     
